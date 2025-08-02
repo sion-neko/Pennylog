@@ -14,6 +14,7 @@
         
         <nav class="tabs">
             <button class="tab-btn active" data-tab="dashboard">ダッシュボード</button>
+            <button class="tab-btn" data-tab="analytics">分析レポート</button>
             <button class="tab-btn" data-tab="add-expense">収支登録</button>
             <button class="tab-btn" data-tab="categories">カテゴリ管理</button>
         </nav>
@@ -24,6 +25,20 @@
                 <div class="month-selector">
                     <label for="month-year">表示月:</label>
                     <select id="month-year"></select>
+                </div>
+                
+                <!-- データ可視化セクション -->
+                <div class="visualization-section">
+                    <div class="charts-container">
+                        <div class="chart-item">
+                            <h3>支出カテゴリー別内訳</h3>
+                            <canvas id="expense-pie-chart"></canvas>
+                        </div>
+                        <div class="chart-item">
+                            <h3>収支バランス</h3>
+                            <canvas id="income-expense-bar-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="summary">
@@ -41,14 +56,24 @@
                     </div>
                 </div>
                 
+                <div class="month-transactions">
+                    <h3 id="month-transactions-title">今月の取引一覧</h3>
+                    <div id="month-transactions-list"></div>
+                </div>
+                
                 <div class="expenses-list">
                     <h3>最近の取引</h3>
                     <div id="recent-expenses"></div>
                 </div>
-                
-                <div class="month-transactions">
-                    <h3 id="month-transactions-title">今月の取引一覧</h3>
-                    <div id="month-transactions-list"></div>
+            </div>
+            
+            <!-- 分析レポート -->
+            <div id="analytics" class="tab-content">
+                <div class="analytics-section">
+                    <h2>月別推移分析</h2>
+                    <div class="line-chart-container">
+                        <canvas id="monthly-trends-chart"></canvas>
+                    </div>
                 </div>
             </div>
             
@@ -150,6 +175,7 @@
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
