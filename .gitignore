@@ -1,0 +1,18 @@
+# Build outputs
+backend/target/
+backend/app.log
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Claude files
+.claude/
+
+# Logs
+*.log
