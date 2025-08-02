@@ -21,13 +21,18 @@
         <main>
             <!-- ダッシュボード -->
             <div id="dashboard" class="tab-content active">
+                <div class="month-selector">
+                    <label for="month-year">表示月:</label>
+                    <select id="month-year"></select>
+                </div>
+                
                 <div class="summary">
                     <div class="summary-card income">
-                        <h3>今月の収入</h3>
+                        <h3 id="summary-period">今月の収入</h3>
                         <p id="total-income">¥0</p>
                     </div>
                     <div class="summary-card expense">
-                        <h3>今月の支出</h3>
+                        <h3 id="summary-period-expense">今月の支出</h3>
                         <p id="total-expense">¥0</p>
                     </div>
                     <div class="summary-card balance">
@@ -39,6 +44,11 @@
                 <div class="expenses-list">
                     <h3>最近の取引</h3>
                     <div id="recent-expenses"></div>
+                </div>
+                
+                <div class="month-transactions">
+                    <h3 id="month-transactions-title">今月の取引一覧</h3>
+                    <div id="month-transactions-list"></div>
                 </div>
             </div>
             
@@ -94,6 +104,50 @@
                 </div>
             </div>
         </main>
+    </div>
+    
+    <!-- 編集モーダル -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>取引を編集</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="edit-expense-form">
+                <div class="form-group">
+                    <label for="edit-type">種別</label>
+                    <select id="edit-type" required>
+                        <option value="EXPENSE">支出</option>
+                        <option value="INCOME">収入</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-amount">金額</label>
+                    <input type="number" id="edit-amount" min="0" step="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-description">説明</label>
+                    <input type="text" id="edit-description">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-category">カテゴリ</label>
+                    <select id="edit-category" required></select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-date">日付</label>
+                    <input type="date" id="edit-date" required>
+                </div>
+                
+                <div class="modal-buttons">
+                    <button type="button" class="cancel-btn">キャンセル</button>
+                    <button type="submit">更新</button>
+                </div>
+            </form>
+        </div>
     </div>
     
     <script src="js/app.js"></script>
