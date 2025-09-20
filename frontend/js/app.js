@@ -1,10 +1,13 @@
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = 'http://localhost:8082/api';
 
 class ExpenseTracker {
     constructor() {
         this.currentEditingExpenseId = null;
         this.selectedMonth = new Date().getMonth() + 1;
         this.selectedYear = new Date().getFullYear();
+        this.pieChart = null;
+        this.barChart = null;
+        this.lineChart = null;
         this.init();
     }
 
@@ -45,6 +48,7 @@ class ExpenseTracker {
             this.selectedMonth = month;
             this.updateDashboard();
             this.loadMonthTransactions();
+            this.updateCharts();
         });
     }
 
@@ -65,6 +69,9 @@ class ExpenseTracker {
         if (tabName === 'dashboard') {
             this.updateDashboard();
             this.loadMonthTransactions();
+            this.updateCharts();
+        } else if (tabName === 'analytics') {
+            this.loadAnalyticsData();
         }
     }
 
@@ -448,6 +455,282 @@ class ExpenseTracker {
                 </div>
             `;
             container.appendChild(expenseElement);
+        });
+    }
+
+    async updateCharts() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/expenses/month/${this.selectedYear}/${this.selectedMonth}`);
+            const monthlyExpenses = await response.json();
+            
+            this.createPieChart(monthlyExpenses);
+            this.createBarChart(monthlyExpenses);
+        } catch (error) {
+            console.error('チャートの更新に失敗:', error);
+        }
+    }
+
+    createPieChart(expenses) {
+        const expensesByCategory = {};
+        let totalExpense = 0;
+        
+        expenses.forEach(expense => {
+            if (expense.type === 'EXPENSE') {
+                const categoryName = expense.category ? expense.category.name : '未分類';
+                const categoryColor = expense.category ? expense.category.color : '#999999';
+                
+                if (!expensesByCategory[categoryName]) {
+                    expensesByCategory[categoryName] = {
+                        amount: 0,
+                        color: categoryColor
+                    };
+                }
+                expensesByCategory[categoryName].amount += Number(expense.amount);
+                totalExpense += Number(expense.amount);
+            }
+        });
+
+        const ctx = document.getElementById('expense-pie-chart').getContext('2d');
+        
+        if (this.pieChart) {
+            this.pieChart.destroy();
+        }
+
+        const labels = Object.keys(expensesByCategory);
+        const data = labels.map(label => expensesByCategory[label].amount);
+        const backgroundColor = labels.map(label => expensesByCategory[label].color);
+
+        this.pieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColor,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const amount = context.parsed;
+                                const percentage = ((amount / totalExpense) * 100).toFixed(1);
+                                return `${context.label}: ¥${amount.toLocaleString()} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    createBarChart(expenses) {
+        let totalIncome = 0;
+        let totalExpense = 0;
+        
+        expenses.forEach(expense => {
+            if (expense.type === 'INCOME') {
+                totalIncome += Number(expense.amount);
+            } else {
+                totalExpense += Number(expense.amount);
+            }
+        });
+
+        const ctx = document.getElementById('income-expense-bar-chart').getContext('2d');
+        
+        if (this.barChart) {
+            this.barChart.destroy();
+        }
+
+        this.barChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['収入', '支出'],
+                datasets: [{
+                    data: [totalIncome, totalExpense],
+                    backgroundColor: ['#27ae60', '#e74c3c'],
+                    borderColor: ['#229954', '#c0392b'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ¥${context.parsed.x.toLocaleString()}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '¥' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    async loadAnalyticsData() {
+        try {
+            const currentDate = new Date();
+            const monthsData = [];
+            
+            // 過去12ヶ月のデータを取得
+            for (let i = 11; i >= 0; i--) {
+                const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                
+                const response = await fetch(`${API_BASE_URL}/expenses/month/${year}/${month}`);
+                const monthlyExpenses = await response.json();
+                
+                let totalIncome = 0;
+                let totalExpense = 0;
+                const categoryExpenses = {};
+                
+                monthlyExpenses.forEach(expense => {
+                    if (expense.type === 'INCOME') {
+                        totalIncome += Number(expense.amount);
+                    } else {
+                        totalExpense += Number(expense.amount);
+                        const categoryName = expense.category ? expense.category.name : '未分類';
+                        if (!categoryExpenses[categoryName]) {
+                            categoryExpenses[categoryName] = 0;
+                        }
+                        categoryExpenses[categoryName] += Number(expense.amount);
+                    }
+                });
+                
+                monthsData.push({
+                    label: `${year}年${month}月`,
+                    income: totalIncome,
+                    expense: totalExpense,
+                    categories: categoryExpenses
+                });
+            }
+            
+            this.createLineChart(monthsData);
+        } catch (error) {
+            console.error('分析データの読み込みに失敗:', error);
+        }
+    }
+
+    createLineChart(monthsData) {
+        const ctx = document.getElementById('monthly-trends-chart').getContext('2d');
+        
+        if (this.lineChart) {
+            this.lineChart.destroy();
+        }
+
+        const labels = monthsData.map(data => data.label);
+        const incomeData = monthsData.map(data => data.income);
+        const expenseData = monthsData.map(data => data.expense);
+        
+        // 主要カテゴリを特定
+        const allCategories = {};
+        monthsData.forEach(monthData => {
+            Object.keys(monthData.categories).forEach(category => {
+                if (!allCategories[category]) {
+                    allCategories[category] = 0;
+                }
+                allCategories[category] += monthData.categories[category];
+            });
+        });
+        
+        const topCategories = Object.keys(allCategories)
+            .sort((a, b) => allCategories[b] - allCategories[a])
+            .slice(0, 3);
+
+        const datasets = [
+            {
+                label: '収入',
+                data: incomeData,
+                borderColor: '#27ae60',
+                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                fill: false,
+                tension: 0.4
+            },
+            {
+                label: '支出',
+                data: expenseData,
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                fill: false,
+                tension: 0.4
+            }
+        ];
+
+        // トップカテゴリの線を追加
+        const colors = ['#3498db', '#f39c12', '#9b59b6'];
+        topCategories.forEach((category, index) => {
+            const categoryData = monthsData.map(monthData => monthData.categories[category] || 0);
+            datasets.push({
+                label: category,
+                data: categoryData,
+                borderColor: colors[index],
+                backgroundColor: `${colors[index]}20`,
+                fill: false,
+                tension: 0.4
+            });
+        });
+
+        this.lineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ¥${context.parsed.y.toLocaleString()}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '¥' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 }
